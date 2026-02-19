@@ -16,8 +16,8 @@ Technical reference for programmatic access to the Protein Data Bank.
 | Resource | Endpoint | Example |
 |----------|----------|---------|
 | Entry | `/rest/v1/core/entry/{pdb_id}` | `4HHB` |
-| Polymer Entity | `/rest/v1/core/polymer_entity/{pdb_id}_{entity_id}` | `4HHB_1` |
-| Nonpolymer Entity | `/rest/v1/core/nonpolymer_entity/{pdb_id}_{entity_id}` | `4HHB_5` |
+| Polymer Entity | `/rest/v1/core/polymer_entity/{pdb_id}/{entity_id}` | `4HHB/1` |
+| Nonpolymer Entity | `/rest/v1/core/nonpolymer_entity/{pdb_id}/{entity_id}` | `4HHB/5` |
 | Assembly | `/rest/v1/core/assembly/{pdb_id}/{assembly_id}` | `4HHB/1` |
 | Chemical Component | `/rest/v1/core/chem_comp/{comp_id}` | `HEM` |
 
@@ -43,8 +43,8 @@ Technical reference for programmatic access to the Protein Data Bank.
 |-------|-------------|----------|
 | `TextQuery` | Full-text keyword search | General discovery |
 | `AttributeQuery` | Filter by specific properties | Precise filtering |
-| `SequenceQuery` | Sequence similarity (MMseqs2) | Homolog finding |
-| `SequenceMotifQuery` | Regex patterns in sequences | Motif search |
+| `SeqSimilarityQuery` | Sequence similarity (MMseqs2) | Homolog finding |
+| `SeqMotifQuery` | Regex patterns in sequences | Motif search |
 | `StructSimilarityQuery` | 3D fold similarity (BioZernike) | Structural homologs |
 | `StructMotifQuery` | Geometric motif matching | Active site search |
 | `ChemSimilarityQuery` | Ligand substructure search | Drug discovery |
@@ -65,39 +65,31 @@ Technical reference for programmatic access to the Protein Data Bank.
 
 ## Searchable Attributes
 
-```python
-from rcsbapi.search.attrs import (
-    rcsb_entry_info,
-    rcsb_entity_source_organism,
-    rcsb_polymer_entity,
-    rcsb_accession_info,
-    rcsb_nonpolymer_entity_instance_container_identifiers,
-    exptl,
-    refine,
-)
+Use string paths with `AttributeQuery`. Common attributes:
 
+```python
 # Resolution
-rcsb_entry_info.resolution_combined
+"rcsb_entry_info.resolution_combined"
 
 # Organism
-rcsb_entity_source_organism.scientific_name
-rcsb_entity_source_organism.ncbi_taxonomy_id
+"rcsb_entity_source_organism.scientific_name"
+"rcsb_entity_source_organism.ncbi_taxonomy_id"
 
 # Molecular weight
-rcsb_polymer_entity.formula_weight
+"rcsb_polymer_entity.formula_weight"
 
 # Experimental method
-exptl.method
+"exptl.method"
 
 # Quality metrics
-refine.ls_R_factor_R_free
+"refine.ls_R_factor_R_free"
 
 # Dates
-rcsb_accession_info.initial_release_date
-rcsb_accession_info.deposit_date
+"rcsb_accession_info.initial_release_date"
+"rcsb_accession_info.deposit_date"
 
 # Ligand codes
-rcsb_nonpolymer_entity_instance_container_identifiers.comp_id
+"rcsb_nonpolymer_entity_instance_container_identifiers.comp_id"
 ```
 
 ## Query Combination
@@ -117,20 +109,27 @@ query = ~AttributeQuery(...)
 # Complex example
 query = (
     TextQuery("kinase") &
-    AttributeQuery(attribute=rcsb_entity_source_organism.scientific_name,
-                   operator="exact_match", value="Homo sapiens") &
-    ~AttributeQuery(attribute=rcsb_entry_info.resolution_combined,
-                    operator="greater", value=3.0)
+    AttributeQuery(
+        attribute="rcsb_entity_source_organism.scientific_name",
+        operator="exact_match",
+        value="Homo sapiens"
+    ) &
+    ~AttributeQuery(
+        attribute="rcsb_entry_info.resolution_combined",
+        operator="greater",
+        value=3.0
+    )
 )
 ```
 
 ## Sequence Search Parameters
 
 ```python
-from rcsbapi.search import SequenceQuery
+from rcsbapi.search import SeqSimilarityQuery
 
-query = SequenceQuery(
-    value="MKTAYIAKQRQISFVK...",  # Query sequence
+# Minimum 25 residues required
+query = SeqSimilarityQuery(
+    value="VLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSH",
     evalue_cutoff=1e-5,           # E-value threshold
     identity_cutoff=0.8,          # Minimum identity (0-1)
     sequence_type="protein",      # "protein", "dna", or "rna"
@@ -144,20 +143,20 @@ from rcsbapi.search import StructSimilarityQuery
 
 # Search by entry
 query = StructSimilarityQuery(
-    structure_search_type="entry",
+    structure_search_type="entry_id",
     entry_id="4HHB"
 )
 
 # Search by chain
 query = StructSimilarityQuery(
-    structure_search_type="chain",
+    structure_search_type="chain_id",
     entry_id="4HHB",
     chain_id="A"
 )
 
 # Search by assembly
 query = StructSimilarityQuery(
-    structure_search_type="assembly",
+    structure_search_type="assembly_id",
     entry_id="4HHB",
     assembly_id="1"
 )
@@ -166,20 +165,23 @@ query = StructSimilarityQuery(
 ## Controlling Output
 
 ```python
-from rcsbapi.search import TextQuery, ReturnType
+from rcsbapi.search import TextQuery
 
 query = TextQuery("hemoglobin")
 
 # PDB IDs (default)
 ids = list(query())
 
-# With relevance scores
-scored = list(query(return_type=ReturnType.ENTRY, return_scores=True))
-# [{'identifier': '4HHB', 'score': 0.95}, ...]
+# Limit results
+ids = list(query(rows=100))
 
 # Polymer entity IDs
-entities = list(query(return_type=ReturnType.POLYMER_ENTITY))
+entities = list(query(return_type="polymer_entity"))
 # ['4HHB_1', '4HHB_2', ...]
+
+# Assembly IDs
+assemblies = list(query(return_type="assembly"))
+# ['4HHB-1', '4HHB-2', ...]
 ```
 
 ## File Download URLs

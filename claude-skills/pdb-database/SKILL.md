@@ -21,67 +21,86 @@ The Protein Data Bank hosts over 200,000 experimentally determined macromolecula
 ## Setup
 
 ```bash
-uv pip install rcsb-api requests
+pip install rcsb-api requests
 ```
 
-The `rcsb-api` package provides:
+The `rcsb-api` package (v1.5.0+) provides:
 - `rcsbapi.search` - Query construction and execution
-- `rcsbapi.data` - Metadata retrieval via REST/GraphQL
+- `rcsbapi.data` - DataQuery for batch retrieval
 
 ## Quick Reference
 
 ### Search Queries
 
 ```python
-from rcsbapi.search import TextQuery, AttributeQuery, SequenceQuery, StructSimilarityQuery
-from rcsbapi.search.attrs import rcsb_entity_source_organism, rcsb_entry_info, exptl
+from rcsbapi.search import TextQuery, AttributeQuery, SeqSimilarityQuery, StructSimilarityQuery
 
 # Text search
 results = list(TextQuery("kinase inhibitor")())
 
-# Filter by organism
+# Filter by organism (use string attribute paths)
 human = AttributeQuery(
-    attribute=rcsb_entity_source_organism.scientific_name,
+    attribute="rcsb_entity_source_organism.scientific_name",
     operator="exact_match",
     value="Homo sapiens"
 )
 
 # Filter by resolution
 high_res = AttributeQuery(
-    attribute=rcsb_entry_info.resolution_combined,
+    attribute="rcsb_entry_info.resolution_combined",
     operator="less",
     value=2.0
 )
 
-# Combine queries: & (AND), | (OR), ~ (NOT)
-results = list(TextQuery("kinase") & human & high_res)()
+# Filter by experimental method
+xray = AttributeQuery(
+    attribute="exptl.method",
+    operator="exact_match",
+    value="X-RAY DIFFRACTION"
+)
 
-# Sequence similarity (MMseqs2)
-seq_query = SequenceQuery(
-    value="MKTAYIAKQRQISFVK...",
+# Combine queries: & (AND), | (OR), ~ (NOT)
+results = list((TextQuery("kinase") & human & high_res)())
+
+# Sequence similarity (MMseqs2) - minimum 25 residues required
+seq_query = SeqSimilarityQuery(
+    value="VLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSH",
     evalue_cutoff=1e-5,
     identity_cutoff=0.7
 )
 
 # Structure similarity (3D fold)
 struct_query = StructSimilarityQuery(
-    structure_search_type="entry",
+    structure_search_type="entry_id",
     entry_id="4HHB"
 )
 ```
 
-### Data Retrieval
+### Data Retrieval (REST API)
+
+The `rcsb-api` package's data module has limited functionality. Use the REST API directly for metadata:
 
 ```python
-from rcsbapi.data import fetch, Schema
+import requests
 
-# Entry metadata
-data = fetch("4HHB", schema=Schema.ENTRY)
+def fetch_entry(pdb_id: str) -> dict:
+    """Fetch entry metadata from RCSB REST API."""
+    resp = requests.get(f"https://data.rcsb.org/rest/v1/core/entry/{pdb_id}")
+    resp.raise_for_status()
+    return resp.json()
+
+# Example usage
+data = fetch_entry("4HHB")
 print(data["struct"]["title"])
 print(data["rcsb_entry_info"]["resolution_combined"])
 
 # Polymer entity (chain info + sequence)
-entity = fetch("4HHB_1", schema=Schema.POLYMER_ENTITY)
+def fetch_polymer_entity(pdb_id: str, entity_id: int = 1) -> dict:
+    resp = requests.get(f"https://data.rcsb.org/rest/v1/core/polymer_entity/{pdb_id}/{entity_id}")
+    resp.raise_for_status()
+    return resp.json()
+
+entity = fetch_polymer_entity("4HHB", 1)
 sequence = entity["entity_poly"]["pdbx_seq_one_letter_code"]
 ```
 
@@ -113,22 +132,21 @@ def download_structure(pdb_id: str, fmt: str = "cif", outdir: str = ".") -> Path
 
 ```python
 from rcsbapi.search import TextQuery, AttributeQuery
-from rcsbapi.search.attrs import rcsb_entity_source_organism, rcsb_entry_info, exptl
 
 query = (
     TextQuery("receptor") &
     AttributeQuery(
-        attribute=rcsb_entity_source_organism.scientific_name,
+        attribute="rcsb_entity_source_organism.scientific_name",
         operator="exact_match",
         value="Homo sapiens"
     ) &
     AttributeQuery(
-        attribute=rcsb_entry_info.resolution_combined,
+        attribute="rcsb_entry_info.resolution_combined",
         operator="less",
         value=2.5
     ) &
     AttributeQuery(
-        attribute=exptl.method,
+        attribute="exptl.method",
         operator="exact_match",
         value="X-RAY DIFFRACTION"
     )
@@ -139,15 +157,17 @@ results = list(query())
 ### Batch Metadata Retrieval
 
 ```python
+import requests
 import time
-from rcsbapi.data import fetch, Schema
 
 def fetch_batch(pdb_ids: list, delay: float = 0.3) -> dict:
     """Fetch metadata with rate limiting."""
     results = {}
     for pdb_id in pdb_ids:
         try:
-            data = fetch(pdb_id, schema=Schema.ENTRY)
+            resp = requests.get(f"https://data.rcsb.org/rest/v1/core/entry/{pdb_id}")
+            resp.raise_for_status()
+            data = resp.json()
             results[pdb_id] = {
                 "title": data["struct"]["title"],
                 "resolution": data.get("rcsb_entry_info", {}).get("resolution_combined"),
@@ -163,11 +183,10 @@ def fetch_batch(pdb_ids: list, delay: float = 0.3) -> dict:
 
 ```python
 from rcsbapi.search import AttributeQuery
-from rcsbapi.search.attrs import rcsb_nonpolymer_entity_instance_container_identifiers
 
 # Find structures containing imatinib (ligand ID: STI)
 query = AttributeQuery(
-    attribute=rcsb_nonpolymer_entity_instance_container_identifiers.comp_id,
+    attribute="rcsb_nonpolymer_entity_instance_container_identifiers.comp_id",
     operator="exact_match",
     value="STI"
 )
@@ -208,16 +227,29 @@ result = response.json()["data"]["entry"]
 |------|------------|
 | **PDB ID** | 4-character alphanumeric code (e.g., "4HHB"). AlphaFold uses "AF_" prefix |
 | **Entity** | Distinct molecular species. A homodimer has one entity appearing twice |
-| **Resolution** | Quality metric in angstroms. Lower is better; <2.0 A is high quality |
+| **Resolution** | Quality metric in angstroms. Lower is better; <2.0 Å is high quality |
 | **Biological Assembly** | Functional oligomeric state (may differ from asymmetric unit) |
 | **mmCIF** | Modern format replacing legacy PDB; required for large structures |
+
+## Common Attribute Paths
+
+Use these string paths with `AttributeQuery`:
+
+| Attribute | Description |
+|-----------|-------------|
+| `rcsb_entity_source_organism.scientific_name` | Source organism (e.g., "Homo sapiens") |
+| `rcsb_entry_info.resolution_combined` | Resolution in angstroms |
+| `exptl.method` | Experimental method (X-RAY DIFFRACTION, ELECTRON MICROSCOPY, SOLUTION NMR) |
+| `rcsb_nonpolymer_entity_instance_container_identifiers.comp_id` | Ligand/small molecule ID |
+| `struct.title` | Structure title |
+| `rcsb_accession_info.deposit_date` | Deposition date |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
 | Use mmCIF format | PDB format has atom count limits |
-| Filter by resolution | <2.5 A for most analyses; <2.0 A for detailed work |
+| Filter by resolution | <2.5 Å for most analyses; <2.0 Å for detailed work |
 | Check experimental method | X-ray vs cryo-EM vs NMR have different quality metrics |
 | Rate limit requests | 2-3 req/s to avoid 429 errors |
 | Cache downloads | Structures rarely change after release |
@@ -231,7 +263,7 @@ result = response.json()["data"]["entry"]
 | 429 Too Many Requests | Implement exponential backoff; reduce request rate |
 | Empty search results | Check query syntax; use `query.to_dict()` to debug |
 | Large structure fails | Use mmCIF format instead of PDB |
-| Missing sequence data | Query polymer entity (`{ID}_1`) not entry |
+| Missing sequence data | Query polymer entity endpoint, not entry |
 
 ## References
 
