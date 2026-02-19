@@ -1,201 +1,105 @@
 ---
 name: amina-init
-description: Initialize Claude Code for Amina CLI. Use this skill at the start of every conversation when working with AminoAnalytica's Amina CLI in Claude Code. Provides guidance on setup and getting started with key commands.
+description: Foundation skill for autonomous protein engineering via the Amina CLI. Use at session start when working with AminoAnalytica's Amina CLI. Triggers on: protein design, structure prediction, binder design, docking, molecular dynamics, enzyme engineering, or any mention of Amina/amina-cli. Related tool-specific skills (e.g., amina-rfdiffusion, amina-proteinmpnn, amina-boltz-2, amina-diffdock) and workflow skills (e.g., workflow-binder-design, workflow-enzyme-engineering) provide deeper guidance.
 ---
 
 # Amina CLI
 
-Foundation skill for running protein engineering tools via the Amina command-line interface.
+Run autonomous protein engineering workflows. Docs: [CLI](https://app.aminoanalytica.com/docs/cli) | [Tools](https://app.aminoanalytica.com/docs/tools)
 
-For latest documentation, see:
-- **CLI documentation**: [Amina CLI Docs](https://app.aminoanalytica.com/docs/cli)
-- **Tool catalog**: [Amina Tools](https://app.aminoanalytica.com/docs/tools)
+## Session Setup
 
-## Skill Types
-
-This skill is part of a network of protein engineering skills:
-
-| Type | Purpose | Examples |
-|------|---------|----------|
-| **Amina Tool Skills** | Best practices for specific Amina CLI tools | rfdiffusion, proteinmpnn, boltz, diffdock |
-| **General Skills** | External tools and databases for protein work | PDB database, UniProt, PyMOL, BioPython |
-| **Workflow Skills** | End-to-end pipelines combining multiple tools | binder-design, enzyme-engineering |
-
-This foundation skill covers Amina CLI usage; tool-specific and workflow skills provide deeper guidance.
-
-## Environment Setup
-
-**At the start of every session, verify the setup:**
-
-### 1. Check Amina CLI Installation
+Verify silently at session start. Only prompt user if something fails.
 
 ```bash
-amina --version
+amina --version                 # Install: pip install amina-cli
+amina auth status               # If unauthenticated: amina auth set-key "{key}"
 ```
 
-If missing, install with `pip install amina-cli` (try `pip3` or `python3 -m pip` as fallbacks).
+If user lacks a Python environment, offer to create one with `python -m venv .venv`.
 
-### 2. Check Authentication
+## Agent Behavior
 
-```bash
-amina auth status
-```
+**Autonomy first**: Use defaults and infer parameters from context. Only ask for truly blocking inputs (target PDB for binder design, ligand for docking).
 
-If not authenticated, ask for their API key (sign up free at https://aminoanalytica.com), then set with:
-```bash
-amina auth set-key "{key}"
-```
+**Adapt to expertise**: Jargon (scRMSD, pLDDT, contigs) → be terse. Plain English → explain steps.
 
-### 3. Ask About Python Environment
+**Parse requests for**: Target (PDB ID/sequence/file), Goal, Constraints (hotspots, chains, lengths), Scale (number of designs).
 
-Since the user installed `amina-cli` via pip, they likely already have a Python environment. Ask:
+**Classify workflow**:
+- "binder", "bind to" → De Novo Binder Design
+- "design protein" → De Novo Monomer Design
+- "motif", "scaffold", "contigs" → Motif Scaffolding
+- "enzyme", "catalytic", "mutant" → Enzyme Engineering
+- "dock", "ligand", "SMILES" → Small Molecule Docking
+- "validate", "assess" → Structure Validation
+- "interface", "PPI" → PPI Analysis
+- "embedding", "cluster" → Sequence Space Exploration
 
-- "Do you have a Python virtual environment set up for this project? If so, what's the activation command?"
+**Research when useful**: For unfamiliar proteins, use `WebSearch` for PDB IDs, binding interfaces, known hotspots. Skip for self-contained requests.
 
-If no environment exists, offer to create one:
-
-```bash
-# Create virtual environment
-python -m venv .venv
-
-# Activate (macOS/Linux)
-source .venv/bin/activate
-
-# Activate (Windows)
-.venv\Scripts\activate
-
-# Install amina-cli in the environment
-pip install amina-cli
-```
-
-**Why this matters:**
-- Many protein engineering workflows require Python scripts for data processing
-- BioPython, NumPy, and other scientific packages may be needed
-- Keeping dependencies isolated prevents conflicts
-
-**If the user already has an environment:**
-- Use their existing activation command
-- Install additional packages as needed into that environment
-
-## Quick Reference
+## CLI Reference
 
 ```bash
-# Authentication
-amina auth set-key              # Set API key
-amina auth status               # Check authentication
+# Discovery (always check before running)
+amina tools list                # List all tools
+amina run <tool> --help         # Show parameters (never guess)
 
-# Tool discovery
-amina tools list                # List all available tools
-amina tools <tool>              # Show tool description and outputs
-amina run <tool> --help         # Show tool parameters and usage
-
-# Running tools
-amina run <tool> [params]       # Run a tool
-amina run <tool> -o <dir>       # Specify output directory
-amina run <tool> --background   # Run in background (async)
-amina run <tool> --job-name <n> # Custom job name
+# Execution
+amina run <tool> [params] -o <dir>           # Sync
+amina run <tool> --background --job-name <n> # Async (>30s jobs)
 
 # Job management
-amina jobs list                 # List recent jobs
-amina jobs status <job-id>      # Check job status
-amina jobs wait <job-id>        # Wait for job completion
-amina jobs download <job-id>    # Download job results
-```
-
-## Core Workflows
-
-### 1. Before Running Any Tool
-
-**Always discover parameters first:**
-```bash
-amina run <tool> --help
-```
-
-This returns exact parameter names, types, and descriptions. Never guess parameters.
-
-### 2. Running Tools
-
-**Synchronous (short-running):**
-```bash
-amina run pdb-cleaner --input protein.pdb -o ./results/
-```
-
-**Asynchronous (long-running):**
-```bash
-amina run esmfold --sequence "MKTV..." --background --job-name fold_run1
-# Returns job ID immediately
-amina jobs wait <job-id>
-amina jobs download <job-id> -o ./results/
-```
-
-**When to use `--background`:**
-- Structure prediction (ESMFold, Boltz)
-- RFDiffusion (all modes)
-- Molecular dynamics simulations
-- Any job expected to run >30 seconds
-
-### 3. Job Management
-
-**Check running jobs:**
-```bash
 amina jobs list --status running
-```
-
-**Monitor a specific job:**
-```bash
 amina jobs status <job-id>
-# Shows: status, progress, runtime, output files when complete
+amina jobs wait <job-id> && amina jobs download <job-id> -o ./
+amina jobs logs <job-id>        # Debug failures
 ```
 
-**Wait and download:**
+**Use `--background` for**: Structure prediction (ESMFold, Boltz), RFDiffusion, MD simulations, any job >30s.
+
+## Execution Patterns
+
+### Project Organization
+
 ```bash
-amina jobs wait <job-id>           # Blocks until complete
-amina jobs download <job-id> -o ./ # Download all outputs
+# Create project directory
+~/amina-projects/{workflow_name}_{YYYYMMDD_HHMMSS}/
 ```
 
-## File Organization
+Single tool: `./results/<tool>_<jobname>/`
+Multi-stage: `./project/01_structure/ 02_design/ 03_validation/`
+Iterative: `./project/round_1/ round_2/ round_3/`
 
-Adapt organization to task complexity:
+### Parallelization
 
-**Single tool run:**
-```
-./results/<tool>_<jobname>/
-```
+- **`--background`**: Long tools (e.g., protein design, simulations, structure prediction). Wait with `amina jobs wait`.
+- **Bash `run_in_background: true`**: Many short parallel jobs. Collect with `TaskOutput(block=true)`.
 
-**Multi-step workflow:**
-```
-./project/
-├── 01_structure_prediction/
-├── 02_binder_design/
-├── 03_sequence_design/
-└── 04_validation/
-```
+Always parallelize independent tasks within a stage.
 
-**Iterative design:**
-```
-./project/
-├── round_1/
-├── round_2/
-└── round_3/
-```
+### Tool Chaining
 
-Rename cryptic output files for clarity when needed.
+| From | Output | To | Input |
+|------|--------|-----|-------|
+| RFdiffusion | `*.pdb` | ProteinMPNN | `--pdb` |
+| ProteinMPNN | `*.fasta` | ESMFold | `--sequence` (parse FASTA) |
+| ESMFold | `*.pdb` | Simple RMSD | `--mobile` |
+| P2Rank | `*_predictions.csv` | Vina | `--center-x/y/z` (parse CSV) |
+| PDB Cleaner | `*_cleaned.pdb` | Any PDB tool | `--pdb` |
+
+After `amina run`, use `Glob` to find outputs. Never guess metrics—wait for actual results.
+
+## Results & Iteration
+
+Present results naturally for the task. Read output files and interpret for user. Suggest 1-2 follow-ups conversationally.
+
+**Key principle**: Never rerun expensive stages. Check what exists before re-executing.
 
 ## Error Handling
 
-**Authentication errors:**
 ```bash
-amina auth status               # Verify key is set
-amina auth set-key              # Re-authenticate if needed
+amina auth status               # Auth issues
+amina jobs logs <job-id>        # Job failures
+amina tools <tool>              # Format/parameter issues
 ```
-
-**Job failures:**
-```bash
-amina jobs status <job-id>      # Check error message
-amina jobs logs <job-id>        # View detailed logs
-```
-
-**Common issues:**
-- Invalid input file format → Check tool's expected format with `amina tools <tool>`
-- Job timeout → Use smaller input or increase resources if available
-- Parameter errors → Verify exact parameter names via `amina tools <tool>`
