@@ -1,6 +1,6 @@
 ---
 name: amina-init
-description: Core CLI knowledge for running protein engineering tools via Amina. Use when user mentions "amina", "amina-cli", running protein tools from CLI, job management, checking job status, or downloading results. This skill provides authentication, tool discovery, job execution patterns, and file organization conventions for all Amina platform operations.
+description: Initialize Claude Code for Amina CLI. Use this skill at the start of every conversation when working with AminoAnalytica's Amina CLI in Claude Code. Provides guidance on setup and getting started with key commands.
 ---
 
 # Amina CLI
@@ -22,6 +22,60 @@ This skill is part of a network of protein engineering skills:
 | **Workflow Skills** | End-to-end pipelines combining multiple tools | binder-design, enzyme-engineering |
 
 This foundation skill covers Amina CLI usage; tool-specific and workflow skills provide deeper guidance.
+
+## Environment Setup
+
+**At the start of every session, verify the setup:**
+
+### 1. Check Amina CLI Installation
+
+```bash
+amina --version
+```
+
+If missing, install with `pip install amina-cli` (try `pip3` or `python3 -m pip` as fallbacks).
+
+### 2. Check Authentication
+
+```bash
+amina auth status
+```
+
+If not authenticated, ask for their API key (sign up free at https://aminoanalytica.com), then set with:
+```bash
+amina auth set-key "{key}"
+```
+
+### 3. Ask About Python Environment
+
+Since the user installed `amina-cli` via pip, they likely already have a Python environment. Ask:
+
+- "Do you have a Python virtual environment set up for this project? If so, what's the activation command?"
+
+If no environment exists, offer to create one:
+
+```bash
+# Create virtual environment
+python -m venv .venv
+
+# Activate (macOS/Linux)
+source .venv/bin/activate
+
+# Activate (Windows)
+.venv\Scripts\activate
+
+# Install amina-cli in the environment
+pip install amina-cli
+```
+
+**Why this matters:**
+- Many protein engineering workflows require Python scripts for data processing
+- BioPython, NumPy, and other scientific packages may be needed
+- Keeping dependencies isolated prevents conflicts
+
+**If the user already has an environment:**
+- Use their existing activation command
+- Install additional packages as needed into that environment
 
 ## Quick Reference
 

@@ -40,7 +40,8 @@ Skills are organized into categories:
 | Type | Purpose | Examples |
 |------|---------|----------|
 | **Foundation** | Core CLI usage patterns | amina-init |
-| **Tool Skills** | Best practices for specific tools | rfdiffusion, proteinmpnn, boltz, diffdock |
+| **Amina Tool Skills** | Best practices for using the Amina tools (prefixed with "amina-") | rfdiffusion, proteinmpnn, boltz, diffdock |
+| **External Tool Skills** | Best practices for specific external tools | PDB database, UniProt, PyMOL, BioPython |
 | **Workflow Skills** | End-to-end pipelines | binder-design, enzyme-engineering |
 
 ## What Skills Teach Claude
