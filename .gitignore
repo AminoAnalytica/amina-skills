@@ -1,0 +1,4 @@
+# Ignore help folder
+help/
+.claude/
+unfinished-skills/
