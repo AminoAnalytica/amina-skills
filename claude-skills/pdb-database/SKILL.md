@@ -1,6 +1,6 @@
 ---
 name: pdb-database
-description: Query and retrieve protein/nucleic acid structures from RCSB PDB. Supports text, sequence, and structure-based searches, coordinate downloads, and metadata retrieval for structural biology workflows.
+description: Query and retrieve protein/nucleic acid structures from RCSB PDB. Use when you need to search the PDB database for structures or metadata. Supports text, sequence, and structure-based searches, coordinate downloads, and metadata retrieval for structural biology workflows.
 ---
 
 # RCSB Protein Data Bank
