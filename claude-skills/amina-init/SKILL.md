@@ -148,10 +148,11 @@ If the directory already has structure, follow it. If empty, create minimal orga
 
 ### Parallelization
 
-- **`--background`**: Long tools (e.g., protein design, simulations, structure prediction). Wait with `amina jobs wait`.
-- **Bash `run_in_background: true`**: Many short parallel jobs. Collect with `TaskOutput(block=true)`.
+Use `--background` for ALL parallel jobs, both long and short:
 
-Always parallelize independent tasks within a stage.
+1. **Submit**: Launch all jobs with `--background` in a single message (multiple Bash tool calls — each returns a job ID instantly)
+2. **Wait**: `amina jobs wait {id1} {id2} {id3} ... --poll-interval 10` (blocks until all complete)
+3. **Download**: `amina jobs download {id} -o {dir}/` for each job
 
 ### Tool Chaining
 
