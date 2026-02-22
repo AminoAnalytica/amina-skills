@@ -13,7 +13,15 @@ ls -la                          # See existing structure
 
 Look for: existing project organization, input files (PDBs, FASTAs), config files, previous Amina outputs. Adapt to the existing structure rather than imposing a new one.
 
-## 2. Dependency Management
+## 2. Ensure Amina is Up to Date
+
+```bash
+pip install --upgrade amina-cli           # or: uv pip install --upgrade amina-cli
+```
+
+This is a no-op if already current.
+
+## 3. Dependency Management
 
 **All packages must be installed in the same environment as amina-cli (Python 3.11+).**
 
@@ -21,7 +29,6 @@ Look for: existing project organization, input files (PDBs, FASTAs), config file
 # Verify environment
 python --version                          # Must be 3.11+
 which python                              # Confirm correct interpreter
-amina --version                           # Confirm amina accessible
 ```
 
 **Install dependencies using the same method as amina-cli:**
@@ -43,7 +50,7 @@ source .venv/bin/activate
 pip install amina-cli                     # or: uv pip install amina-cli
 ```
 
-## 3. Verify Amina Authentication (silently)
+## 4. Verify Amina Authentication (silently)
 
 Only prompt user if something fails:
 
@@ -51,7 +58,7 @@ Only prompt user if something fails:
 amina auth status               # If unauthenticated: amina auth set-key "{key}"
 ```
 
-## 4. Output Session Summary
+## 5. Output Session Summary
 
 Detect the active environment:
 
