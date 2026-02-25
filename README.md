@@ -4,24 +4,19 @@ Claude Code skills for protein engineering using the [Amina CLI](https://aminoan
 
 ## Installation
 
-### Option 1: Using Amina CLI (Recommended)
-
 ```bash
-pip install amina-cli
-cd /your/project
-amina init claude-skills
+# Install all skills
+npx skills add AminoAnalytica/amina-skills --all
+
+# Or install specific skills
+npx skills add AminoAnalytica/amina-skills --skill amina-init
+npx skills add AminoAnalytica/amina-skills --skill pdb-database
+
+# List available skills
+npx skills add AminoAnalytica/amina-skills --list
 ```
 
-### Option 2: Manual Installation
-
-```bash
-cd /your/project
-mkdir -p .claude/skills
-curl -L https://github.com/AminoAnalytica/amina-skills/archive/main.zip -o skills.zip
-unzip skills.zip "amina-skills-main/claude-skills/*" -d .
-mv amina-skills-main/claude-skills/* .claude/skills/
-rm -rf amina-skills-main skills.zip
-```
+Works with Claude Code, Cursor, Codex, Windsurf, and [other supported agents](https://github.com/vercel-labs/skills).
 
 ## Usage
 
