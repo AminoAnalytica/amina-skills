@@ -16,7 +16,7 @@ npx skills add AminoAnalytica/amina-skills --skill pdb-database
 npx skills add AminoAnalytica/amina-skills --list
 ```
 
-Works with Claude Code, Cursor, Codex, Windsurf, and [other supported agents](https://github.com/vercel-labs/skills).
+Works with Claude Code, OpenCode, OpenClaw, and [other supported agents](https://github.com/vercel-labs/skills).
 
 ## Usage
 
