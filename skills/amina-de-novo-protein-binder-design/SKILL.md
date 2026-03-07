@@ -114,7 +114,7 @@ Binder length should stay within 50--200 residues. When in doubt, err toward lon
 ### Execution
 
 - Each call produces backbone PDB files with backbone atoms (N, CA, C, O) for both binder (chain X) and target chains.
-- Parallelize across multiple containers for large batches.
+- **Parallelization**: Each RFdiffusion call should generate at most **10 designs**. For larger counts, split into parallel calls (e.g., 100 designs = 10 parallel calls x 10 designs each). This is significantly faster than a single call with `num_designs=100`.
 - Optional beta model variant available (`use_beta_model`, default: off).
 
 ### Output

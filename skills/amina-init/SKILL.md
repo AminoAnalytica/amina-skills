@@ -48,6 +48,7 @@ amina tools list                              # List all tools
 amina run <tool> --help                       # Show parameters
 amina run <tool> [params] -o <dir>            # Sync execution
 amina run <tool> --background --job-name <n>  # Async execution
+amina jobs cancel <id>                          # Cancel job (full refund)
 amina jobs wait <id> && amina jobs download <id> -o ./
 ```
 

@@ -44,11 +44,12 @@ amina run <tool> --help         # Show parameters (never guess)
 amina run <tool> [params] -o <dir>           # Sync
 amina run <tool> --background --job-name <n> # Async (>30s jobs)
 
-# Job management
-amina jobs list --status running
-amina jobs status <job-id>
+# Job management (use --json for machine-readable output)
+amina jobs list --json
+amina jobs status <job-id> --json
 amina jobs wait <job-id> && amina jobs download <job-id> -o ./
-amina jobs logs <job-id>        # Debug failures
+amina jobs cancel <job-id> --json   # Cancel queued/running job (full refund)
+amina jobs logs <job-id>            # Debug failures
 ```
 
 **Use `--background` for**: Structure prediction (ESMFold, Boltz), RFDiffusion, MD simulations, any job >30s.
